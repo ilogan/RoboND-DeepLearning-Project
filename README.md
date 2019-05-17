@@ -1,161 +1,251 @@
-[![Udacity - Robotics NanoDegree Program](https://s3-us-west-1.amazonaws.com/udacity-robotics/Extra+Images/RoboND_flag.png)](https://www.udacity.com/robotics)
+## Project "Follow Me" by Ian Logan
+![1](./images/follow-me.png)
 
-## Deep Learning Project ##
 
-In this project, you will train a deep neural network to identify and track a target in simulation. So-called “follow me” applications like this are key to many fields of robotics and the very same techniques you apply here could be extended to scenarios like advanced cruise control in autonomous vehicles or human-robot collaboration in industry.
 
-[image_0]: ./docs/misc/sim_screenshot.png
-![alt text][image_0] 
+### The Network Architecture
 
-## Setup Instructions
-**Clone the repository**
-```
-$ git clone https://github.com/udacity/RoboND-DeepLearning.git
-```
+For this project, the goal was to have a drone identify and follow a target in simulation. I used a fully convolutional network (FCN) with Keras layers in TensorFlow in order to accomplish the task. 
 
-**Download the data**
+#### Traditional Convolutional Network vs Fully Convolutional Network
 
-Save the following three files into the data folder of the cloned repository. 
+In general, convolutional neural networks (CNNs) are great for image classification. Using filters or "kernels," the network breaks down the image into smaller and smaller pieces to pull out meaningful and increasingly complex features, while simultaneously reducing spatial complexity of the image. While extremely useful from a purely image classifying standpoint, this would be an ineffective method for following a target in simulation. The question here is not simply, "Is the target in the image?" but rather, "Where in the image is the target?" The solution lies in *preserving* spatial information along with correctly classifying the target from the drones camera.
 
-[Training Data](https://s3-us-west-1.amazonaws.com/udacity-robotics/Deep+Learning+Data/Lab/train.zip) 
+This is where CNN and FCN architecture diverges, and the benefits of a FCN for this project's purpose start to shine. After breaking down the image into very deep convolutions, CNNs use fully connected layers to assign weights and make predictions based on the extracted features from the convolution layers. This is great for classifying the image as a whole, but not classifying multiple objects within the image.
 
-[Validation Data](https://s3-us-west-1.amazonaws.com/udacity-robotics/Deep+Learning+Data/Lab/validation.zip)
+![2](./images/traditional-cnn.png)
 
-[Sample Evaluation Data](https://s3-us-west-1.amazonaws.com/udacity-robotics/Deep+Learning+Data/Project/sample_evaluation_data.zip)
+As stated earlier, this results in the loss of spatial information (i.e. the height and width of the image is lost), because in order for the output of the convolution to feed into the fully connected layer, it must be flattened into a two dimensional tensor first. For the purposes of this project, losing this spatial information would be detrimental, as it would make it impossible to locate where the target in the image is. We would only know that it exists somewhere in front of the camera. 
 
-**Download the QuadSim binary**
+On the other hand, FCNs classify and retain spatial information by abandoning the fully connected model in order to use convolutions for every step in its architecture. It is this fully convolutional model that allows the drone to not only identify but also locate and follow the target through what is called semantic segmentation. Since the spatial information is retained, the network has the ability to assign meaning to multiple objects within an image.
 
-To interface your neural net with the QuadSim simulator, you must use a version QuadSim that has been custom tailored for this project. The previous version that you might have used for the Controls lab will not work.
+![3](./images/semantic-segmentation.png)
 
-The simulator binary can be downloaded [here](https://github.com/udacity/RoboND-DeepLearning/releases/latest)
 
-**Install Dependencies**
 
-You'll need Python 3 and Jupyter Notebooks installed to do this project.  The best way to get setup with these if you are not already is to use Anaconda following along with the [RoboND-Python-Starterkit](https://github.com/udacity/RoboND-Python-StarterKit).
+I will go more in depth as to how the model accomplishes this in the following section, by using my own model as an example.
 
-If for some reason you choose not to use Anaconda, you must install the following frameworks and packages on your system:
-* Python 3.x
-* Tensorflow 1.2.1
-* NumPy 1.11
-* SciPy 0.17.0
-* eventlet 
-* Flask
-* h5py
-* PIL
-* python-socketio
-* scikit-image
-* transforms3d
-* PyQt4/Pyqt5
+#### My Fully Convolutional Network
 
-## Implement the Segmentation Network
-1. Download the training dataset from above and extract to the project `data` directory.
-2. Implement your solution in model_training.ipynb
-3. Train the network locally, or on [AWS](https://classroom.udacity.com/nanodegrees/nd209/parts/09664d24-bdec-4e64-897a-d0f55e177f09/modules/cac27683-d5f4-40b4-82ce-d708de8f5373/lessons/197a058e-44f6-47df-8229-0ce633e0a2d0/concepts/27c73209-5d7b-4284-8315-c0e07a7cd87f?contentVersion=1.0.0&contentLocale=en-us).
-4. Continue to experiment with the training data and network until you attain the score you desire.
-5. Once you are comfortable with performance on the training dataset, see how it performs in live simulation!
+![4](./images/model-architecture.png)
 
-## Collecting Training Data ##
-A simple training dataset has been provided in this project's repository. This dataset will allow you to verify that your segmentation network is semi-functional. However, if your interested in improving your score,you may want to collect additional training data. To do it, please see the following steps.
 
-The data directory is organized as follows:
-```
-data/runs - contains the results of prediction runs
-data/train/images - contains images for the training set
-data/train/masks - contains masked (labeled) images for the training set
-data/validation/images - contains images for the validation set
-data/validation/masks - contains masked (labeled) images for the validation set
-data/weights - contains trained TensorFlow models
 
-data/raw_sim_data/train/run1
-data/raw_sim_data/validation/run1
+This model is a FCN that consists of four main parts: the encoder blocks, a 1x1 convolutional layer, decoding blocks, and skip connections. The reasoning for creating this model 
+
+##### Encoder Blocks
+
+Let's start by examining what makes up the encoder block. The encoder's job is no different than the convolutional layers' task in a traditional CNN; it seeks to break down an image and extract its features. As a result, we can follow the same general guidelines for constructing the encoder:
+
+```python
+def encoder_block(input_layer, filters, strides):
+
+     # TODO Create a separable convolution layer using the separable_conv2d_batchnorm() function
+	output_layer = separable_conv2d_batchnorm(input_layer, filters, strides)
+
+	return output_layer
 ```
 
-### Training Set ###
-1. Run QuadSim
-2. Click the `DL Training` button
-3. Set patrol points, path points, and spawn points. **TODO** add link to data collection doc
-3. With the simulator running, press "r" to begin recording.
-4. In the file selection menu navigate to the `data/raw_sim_data/train/run1` directory
-5. **optional** to speed up data collection, press "9" (1-9 will slow down collection speed)
-6. When you have finished collecting data, hit "r" to stop recording.
-7. To reset the simulator, hit "`<esc>`"
-8. To collect multiple runs create directories `data/raw_sim_data/train/run2`, `data/raw_sim_data/train/run3` and repeat the above steps.
+Important to note is that ```encoder_block()``` uses a function ```separable_conv2d_batchnorm()``` to construct it's convolutions. ```separable_conv2d_batchnorm()``` performs two steps: it takes an input and applies a separable convolution (as opposed to a regular one) to it, and it also applies batch normalization to that convolution. Separable convolutions seek to reduce the number of parameters produced by running a filter over each input channel separately before running additional 1x1 convolutions equal to the number of filters over those channels. Batch normalization allows the network to normalize the inputs at every layer, which equalizes variance and reduces the complexity of numerical computations for the network. Both of these steps together lead to an increase in runtime performance and reduction to training times.
 
+```python
+def separable_conv2d_batchnorm(input_layer, filters, strides=1):
+    output_layer = SeparableConv2DKeras(filters=filters,kernel_size=3, strides=strides,
+                             padding='same', activation='relu')(input_layer)
 
-### Validation Set ###
-To collect the validation set, repeat both sets of steps above, except using the directory `data/raw_sim_data/validation` instead rather than `data/raw_sim_data/train`.
-
-### Image Preprocessing ###
-Before the network is trained, the images first need to be undergo a preprocessing step. The preprocessing step transforms the depth masks from the sim, into binary masks suitable for training a neural network. It also converts the images from .png to .jpeg to create a reduced sized dataset, suitable for uploading to AWS. 
-To run preprocessing:
-```
-$ python preprocess_ims.py
-```
-**Note**: If your data is stored as suggested in the steps above, this script should run without error.
-
-**Important Note 1:** 
-
-Running `preprocess_ims.py` does *not* delete files in the processed_data folder. This means if you leave images in processed data and collect a new dataset, some of the data in processed_data will be overwritten some will be left as is. It is recommended to **delete** the train and validation folders inside processed_data(or the entire folder) before running `preprocess_ims.py` with a new set of collected data.
-
-**Important Note 2:**
-
-The notebook, and supporting code assume your data for training/validation is in data/train, and data/validation. After you run `preprocess_ims.py` you will have new `train`, and possibly `validation` folders in the `processed_ims`.
-Rename or move `data/train`, and `data/validation`, then move `data/processed_ims/train`, into `data/`, and  `data/processed_ims/validation`also into `data/`
-
-**Important Note 3:**
-
-Merging multiple `train` or `validation` may be difficult, it is recommended that data choices be determined by what you include in `raw_sim_data/train/run1` with possibly many different runs in the directory. You can create a temporary folder in `data/` and store raw run data you don't currently want to use, but that may be useful for later. Choose which `run_x` folders to include in `raw_sim_data/train`, and `raw_sim_data/validation`, then run  `preprocess_ims.py` from within the 'code/' directory to generate your new training and validation sets. 
-
-
-## Training, Predicting and Scoring ##
-With your training and validation data having been generated or downloaded from the above section of this repository, you are free to begin working with the neural net.
-
-**Note**: Training CNNs is a very compute-intensive process. If your system does not have a recent Nvidia graphics card, with [cuDNN](https://developer.nvidia.com/cudnn) and [CUDA](https://developer.nvidia.com/cuda) installed , you may need to perform the training step in the cloud. Instructions for using AWS to train your network in the cloud may be found [here](https://classroom.udacity.com/nanodegrees/nd209/parts/09664d24-bdec-4e64-897a-d0f55e177f09/modules/cac27683-d5f4-40b4-82ce-d708de8f5373/lessons/197a058e-44f6-47df-8229-0ce633e0a2d0/concepts/27c73209-5d7b-4284-8315-c0e07a7cd87f?contentVersion=1.0.0&contentLocale=en-us)
-
-### Training your Model ###
-**Prerequisites**
-- Training data is in `data` directory
-- Validation data is in the `data` directory
-- The folders `data/train/images/`, `data/train/masks/`, `data/validation/images/`, and `data/validation/masks/` should exist and contain the appropriate data
-
-To train complete the network definition in the `model_training.ipynb` notebook and then run the training cell with appropriate hyperparameters selected.
-
-After the training run has completed, your model will be stored in the `data/weights` directory as an [HDF5](https://en.wikipedia.org/wiki/Hierarchical_Data_Format) file, and a configuration_weights file. As long as they are both in the same location, things should work. 
-
-**Important Note** the *validation* directory is used to store data that will be used during training to produce the plots of the loss, and help determine when the network is overfitting your data. 
-
-The **sample_evalution_data** directory contains data specifically designed to test the networks performance on the FollowME task. In sample_evaluation data are three directories each generated using a different sampling method. The structure of these directories is exactly the same as `validation`, and `train` datasets provided to you. For instance `patrol_with_targ` contains an `images` and `masks` subdirectory. If you would like to the evaluation code on your `validation` data a copy of the it should be moved into `sample_evaluation_data`, and then the appropriate arguments changed to the function calls in the `model_training.ipynb` notebook.
-
-The notebook has examples of how to evaulate your model once you finish training. Think about the sourcing methods, and how the information provided in the evaluation sections relates to the final score. Then try things out that seem like they may work. 
-
-## Scoring ##
-
-To score the network on the Follow Me task, two types of error are measured. First the intersection over the union for the pixelwise classifications is computed for the target channel. 
-
-In addition to this we determine whether the network detected the target person or not. If more then 3 pixels have probability greater then 0.5 of being the target person then this counts as the network guessing the target is in the image. 
-
-We determine whether the target is actually in the image by whether there are more then 3 pixels containing the target in the label mask. 
-
-Using the above the number of detection true_positives, false positives, false negatives are counted. 
-
-**How the Final score is Calculated**
-
-The final score is the pixelwise `average_IoU*(n_true_positive/(n_true_positive+n_false_positive+n_false_negative))` on data similar to that provided in sample_evaulation_data
-
-**Ideas for Improving your Score**
-
-Collect more data from the sim. Look at the predictions think about what the network is getting wrong, then collect data to counteract this. Or improve your network architecture and hyperparameters. 
-
-**Obtaining a Leaderboard Score**
-
-Share your scores in slack, and keep a tally in a pinned message. Scores should be computed on the sample_evaluation_data. This is for fun, your grade will be determined on unreleased data. If you use the sample_evaluation_data to train the network, it will result in inflated scores, and you will not be able to determine how your network will actually perform when evaluated to determine your grade.
-
-## Experimentation: Testing in Simulation
-1. Copy your saved model to the weights directory `data/weights`.
-2. Launch the simulator, select "Spawn People", and then click the "Follow Me" button.
-3. Run the realtime follower script
-```
-$ python follower.py my_amazing_model.h5
+    output_layer = layers.BatchNormalization()(output_layer) 
+    return output_layer
 ```
 
-**Note:** If you'd like to see an overlay of the detected region on each camera frame from the drone, simply pass the `--pred_viz` parameter to `follower.py`
+
+
+##### 1x1 Convolution Layer
+
+Earlier, I mentioned the use of 1x1 convolutions in separable convolutions. 1x1 convolutions can be used to increase or decrease the dimensionality of a layer, while preserving spatial information, unlike fully-connected layers in traditional CNNs. This also makes it possible for FCNs to accept images of various sizes. The reasoning for this is that 1x1 convolutions retain their four-dimensional shape as opposed to being flattened to two-dimensions as they are with fully connected layers. To create them, all we have to do is set kernel size and stride to 1, and retain 'same' padding. I use the following function later in order to create this layer in my  model:
+
+
+```python
+def conv2d_batchnorm(input_layer, filters, kernel_size=3, strides=1):
+    output_layer = layers.Conv2D(filters=filters, kernel_size=kernel_size, strides=strides, 
+                      padding='same', activation='relu')(input_layer)
+
+    output_layer = layers.BatchNormalization()(output_layer) 
+    return output_layer
+```
+
+
+
+##### Decoder Blocks and Skip Connections
+
+The decoder's purpose is to upscale the output of the encoder so that it is the same size as the original image. The main benefit of this is that, afterwards, each individual pixel in the original image has a prediction associated with it, which is especially useful for semantic segmentation.
+
+To make semantic segmentation even more precise, we use skip connections. As images are broken down through the encoding layers, the network can lose track of the bigger picture. Skip connections connect layers from the encoder to the decoder so that the the network retains information from multiple resolutions.
+
+FCN-8 vs FCN-32:
+
+![5](./images/skip-connections.png)
+
+
+
+And here is the code where we put the above theory into practice:
+
+```python
+def decoder_block(small_ip_layer, large_ip_layer, filters):
+
+	# TODO Upsample the small input layer using the bilinear_upsample() function.
+	bip_layer = bilinear_upsample(small_ip_layer)
+
+    # TODO Concatenate the upsampled and large input layers using layers.concatenate
+    input_layer = layers.concatenate([bip_layer, large_ip_layer])
+
+    # TODO Add some number of separable convolution layers
+    output_layer = separable_conv2d_batchnorm(input_layer, filters)
+
+    return output_layer
+```
+
+The decoder takes in the previous layers output as input and performs bilinear upsampling on them in order to scale up the image after features have been extracted through the encoder. Bilinear upsampling is an operation that attempts to fill in pixel values through interpolation. As a result, the image loses some detail, but the tradeoff is a boost in performance.
+
+```python
+def bilinear_upsample(input_layer):
+    output_layer = BilinearUpSampling2D((2,2))(input_layer)
+    return output_layer
+```
+
+Skip connections are created by concatenating the upsampled layer with an encoding layer. Again this assists with creating much more precise segmentation in the final output.
+
+Finally, this layer is fed through a separable convolution with batch normalization.
+
+##### Piecing the Model Together
+
+```python
+def fcn_model(inputs, num_classes):
+
+    # TODO Add Encoder Blocks. 
+    # As number of encoders increase, depth of model (number of filters) increases
+    e1 = encoder_block(inputs, 32, 2) 
+    e2 = encoder_block(e1, 64, 2) 
+    e3 = encoder_block(e2, 128, 2) 
+
+    # TODO Add 1x1 Convolution layer using conv2d_batchnorm().
+    c1 = conv2d_batchnorm(e3, 256, 1) 
+
+    # TODO: Add the same number of Decoder Blocks as the number of Encoder Blocks
+    d1 = decoder_block(c1, e2, 128) 
+    d2 = decoder_block(d1, e1, 64) 
+    x  = decoder_block(d2, inputs, 32) 
+
+    # The function returns the output layer of your model. "x" is the final layer obtained from the last decoder_block()
+    return layers.Conv2D(num_classes, 1, activation='softmax', padding='same')(x)
+```
+
+The final model consists of 3 encoder blocks, a 1x1 convolutional layer, and 3 decoder blocks. I kept the default filter size of 3 (as defined in the original helper functions), but opted to use a stride of 2 for the encoding layers. This ensured that the image's spatial dimensions were cut in half at each layer. Meanwhile, depth was doubled to capture a wid e variety of features before passing to the 1x1 convolutional layer. 
+
+Again, the 1x1 convolution continued the trend of doubling the filter depth. The main change here was that it contains a regular convolutional layer and the stride was reduced to 1.
+
+The decoder blocks use skip connections to connect to the second and first encoder block before being connected to the input. This time, filter depth was halved before reclaiming its 3 color channel output shape.
+
+### Hyperparameters
+
+```python
+# First Pass (30 Epochs)
+learning_rate = 0.001
+batch_size = 32
+num_epochs = 30
+
+# Second and Third Pass (10 Epochs each)
+learning_rate = 0.0001
+batch_size = 64
+num_epochs = 10
+
+# All Passes
+steps_per_epoch = train_files // batch_size
+validation_steps = valid_files // batch_size
+workers = 4
+```
+
+As can be seen above, I trained the network for a total of 50 epochs, splitting up the training into 3 sections. First, I will go over the initial training pass and reasoning for choosing the hyperparameters. 
+
+#### First Pass
+
+The majority of this stage was spent tuning parameters, and it is where the bulk of training was done. As such, there was a fair amount of trial and error with this stage as opposed to the second and third passes.
+
+![6](./images/30-epoch-curve.png)
+
+##### Learning Rate
+
+Choosing a proper learning rate was essential for the network to train properly. I started by testing how different weights effected the network. By selecting a higher rate of .01, I found the network converged too quickly, which left the validation loss too high. On the other hand, going with a rate of .0001 kept the network learning (while lowering validation loss), but at an extremely slow pace that kept training time too high. I opted with .001, because I found training time was kept shorter, while still lowering training and validation loss at an acceptable rate.
+
+##### Batch Size
+
+I used similar reasoning with batch size as I did learning rate. I wanted fast, effective training, where I could refine learning in the later passes. Because of this, I opted for a batch size of 32. Too high and I ran the risk of running into a minima (trapping validation loss), and too low would keep the validation curve bouncing  erratically, while training loss improved. A batch size of 32 kept both training and validation loss on a smooth decline.
+
+##### Epochs
+
+With learning rate and batch size determined, the number of epochs to choose was straightforward. I allowed the network to run until validation loss stopped improving, which happened at 30 epochs.
+
+##### Steps Per Epoch & Validation Steps
+
+Note the variables `train_files` and `valid_files`. These are the number of images in each training and validation set, respectively. I divided the sets by the number of batches so there would be an even number of images in each batch.
+
+##### Workers
+
+Workers is dependent on hardware capabilities. I didn't find any improvement in training times after setting it to 4 on my machine, so I didn't increase it any more.
+
+##### Result
+
+![7](./images/30-epoch-score.png)
+
+After the 30 epochs were complete, the network achieved an accuracy of 43.9%! I opted to continue training using a second and third pass to see if I could get better results.
+
+
+
+#### Second and Third Pass
+
+This section will be more brief as the logic for hyperparameter tuning is explained above.
+
+##### Learning Rate and Batch Size
+
+Since the majority of training was finished I reverted to the slower, yet still effective learning rate of .0001. 
+
+For the same reasoning, I doubled the batch size to 64 in hopes of achieving a smoother decline in validation loss. Originally, it had bounced between .016 and .014, so it did localize validation bouncing to values .0138 through .0145. With that said, it did not decline much unlike training loss.
+
+##### Epochs
+
+Since I did not want the model to overfit, I pushed the network in small increments to see how its accuracy improved. I found 10 to be a small, yet effective number in achieving this.
+
+##### Results
+
+Here was the score after 40 epochs: 
+
+![8](./images/40-epoch-score.png)
+
+The model improved by 1% so I decided to push it further. In doing so there was not much more improvement. After 50 epochs the validation loss was not improving:
+
+![9](./images/50-epoch-curve.png)
+
+
+
+Although the score did marginally:
+
+![10](./images/50-epoch-score.png)
+
+
+
+Being that the training loss was decreasing while validation loss remained largely unchanged, I stopped training so that the model would not overfit and start losing accuracy. Overall the results turned out really well. Upon running the model in simulation, the drone was able to identify the target and follow them around the environment.
+
+### Future Enhancements
+
+As it stands, the project was a success. With that said, there is always room for improvement. 
+
+The most immediate improvement I plan to make would be automatically checkpointing the model during training when the validation loss decreases (I didn't because for the sake of the project, certain cells in the jupyter notebook weren't to be modified). By doing so, I could experiment with different epochs more, without worrying as much about overfitting the model.
+
+The decoder is also a bit heavy on skip connections. `decoder_block` is currently built to have a skip connection at every layer, but this is not a necessity (see FCN-8 above). I would experiment with creating a deeper network with fewer skip connections moving forward.
+
+I would also like to test the benefit of using higher resolution images. For the sake of training, I added in thousands more images of the target (and non-targets) walking at a distance to help the drone identify when the target was far away. 
+
+![11](./images/segment-artifacts.png)
+
+I noticed that adding in more images of far away objects introduced an over-segmentation of the scene, despite an increase in overall accuracy. In other words, the network was seeing people where there weren't any. I hypothesize that it has to do with the network's increased exposure to small, low-resolution objects during training. Even as a human being, I had trouble identifying some of the smudges of pixels that turned out to be people. In the future, I would like to train on higher resolution images to see how that would effect semantic segmentation and overall accuracy of the drone.
+
+And finally, another improvement I would like to see is expanding the number of models used in the Unity simulation, and the drones ability to follow them. FCNs are great for classifying multiple objects within an image, and there is no reason why this model couldn't learn to follow another target (such as a car) in simulation. Since there were no cars in training, I would obviously need to gather more data with images of the cars in simulation, but the model itself should perform quite well!
