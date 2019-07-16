@@ -1,5 +1,5 @@
 ## Project "Follow Me" by Ian Logan
-![1](./images/follow-me.png)
+![1](images/follow-me.PNG)
 
 
 
@@ -13,13 +13,13 @@ In general, convolutional neural networks (CNNs) are great for image classificat
 
 This is where CNN and FCN architecture diverges, and the benefits of a FCN for this project's purpose start to shine. After breaking down the image into very deep convolutions, CNNs use fully connected layers to assign weights and make predictions based on the extracted features from the convolution layers. This is great for classifying the image as a whole, but not classifying multiple objects within the image.
 
-![2](./images/traditional-cnn.png)
+![2](images/traditional-cnn.png)
 
 As stated earlier, this results in the loss of spatial information (i.e. the height and width of the image is lost), because in order for the output of the convolution to feed into the fully connected layer, it must be flattened into a two dimensional tensor first. For the purposes of this project, losing this spatial information would be detrimental, as it would make it impossible to locate where the target in the image is. We would only know that it exists somewhere in front of the camera. 
 
 On the other hand, FCNs classify and retain spatial information by abandoning the fully connected model in order to use convolutions for every step in its architecture. It is this fully convolutional model that allows the drone to not only identify but also locate and follow the target through what is called semantic segmentation. Since the spatial information is retained, the network has the ability to assign meaning to multiple objects within an image.
 
-![3](./images/semantic-segmentation.png)
+![3](images/semantic-segmentation.PNG)
 
 
 
@@ -27,7 +27,7 @@ I will go more in depth as to how the model accomplishes this in the following s
 
 #### My Fully Convolutional Network
 
-![4](./images/model-architecture.png)
+![4](images/model-architecture.PNG)
 
 
 
@@ -83,7 +83,7 @@ To make semantic segmentation even more precise, we use skip connections. As ima
 
 FCN-8 vs FCN-32:
 
-![5](./images/skip-connections.png)
+![5](images/skip-connections.PNG)
 
 
 
@@ -170,7 +170,7 @@ As can be seen above, I trained the network for a total of 50 epochs, splitting 
 
 The majority of this stage was spent tuning parameters, and it is where the bulk of training was done. As such, there was a fair amount of trial and error with this stage as opposed to the second and third passes.
 
-![6](./images/30-epoch-curve.png)
+![6](images/30-epoch-curve.png)
 
 ##### Learning Rate
 
@@ -194,7 +194,7 @@ Workers is dependent on hardware capabilities. I didn't find any improvement in 
 
 ##### Result
 
-![7](./images/30-epoch-score.png)
+![7](images/30-epoch-score.PNG)
 
 After the 30 epochs were complete, the network achieved an accuracy of 43.9%! I opted to continue training using a second and third pass to see if I could get better results.
 
@@ -218,17 +218,17 @@ Since I did not want the model to overfit, I pushed the network in small increme
 
 Here was the score after 40 epochs: 
 
-![8](./images/40-epoch-score.png)
+![8](images/40-epoch-score.PNG)
 
 The model improved by 1% so I decided to push it further. In doing so there was not much more improvement. After 50 epochs the validation loss was not improving:
 
-![9](./images/50-epoch-curve.png)
+![9](images/50-epoch-curve.PNG)
 
 
 
 Although the score did marginally:
 
-![10](./images/50-epoch-score.png)
+![10](images/50-epoch-score.PNG)
 
 
 
@@ -244,7 +244,7 @@ The decoder is also a bit heavy on skip connections. `decoder_block` is currentl
 
 I would also like to test the benefit of using higher resolution images. For the sake of training, I added in thousands more images of the target (and non-targets) walking at a distance to help the drone identify when the target was far away. 
 
-![11](./images/segment-artifacts.png)
+![11](images/segment-artifacts.PNG)
 
 I noticed that adding in more images of far away objects introduced an over-segmentation of the scene, despite an increase in overall accuracy. In other words, the network was seeing people where there weren't any. I hypothesize that it has to do with the network's increased exposure to small, low-resolution objects during training. Even as a human being, I had trouble identifying some of the smudges of pixels that turned out to be people. In the future, I would like to train on higher resolution images to see how that would effect semantic segmentation and overall accuracy of the drone.
 
